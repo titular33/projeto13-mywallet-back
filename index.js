@@ -1,147 +1,15 @@
-import joi from "joi";
+import express, { json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { Db, MongoClient, ObjectId } from "mongodb";
-import bcrypt from "bcrypt";
-import { v4 as uuid } from "uuid";
-// import db from "./db.js";
+import { login, signUp } from "./controllers/authControllers.js";
+import { getMoviment, postMoviment } from "./controllers/movimentControllers.js";
+
 dotenv.config();
-
-const mongoClient = new MongoClient(process.env.MONGO_URL);
-const promise = mongoClient.connect();
-promise.catch((e) => console.log("Erro na conexão ao banco de dados", e));
-const db = mongoClient.db(process.env.BANCO);
-
-const app = express();
+let app = express();
 app.use(json());
 app.use(cors());
-
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const loginSchema = joi.object({
-    email: joi.string().required().email(),
-    password: joi.string().required(),
-  });
-  const { error } = loginSchema.validate(req.body, {
-    abortEarly: false,
-  });
-  if (error) {
-    return res.status(422).send(error.details.map((detail) => detail.message));
-  }
-  try {
-    const user = await db.collection("users").findOne({ email });
-    console.log(user);
-    if (user && bcrypt.compareSync(password, user.password)) {
-      console.log("entrou");
-      const token = uuid();
-      await db.collection("sessions").insertOne({ userId: user._id, token });
-      res.status(200).send(token);
-    } else {
-      res.status(401).send("Email/Senha incorretas!");
-    }
-  } catch (error) {
-    console.log("Erro ao logar", error);
-    res.sendStatus(500);
-  }
-});
-
-app.post("/sign-up", async (req, res) => {
-  const { email, password, name, repeat_password } = req.body;
-  const signUpSchema = joi.object({
-    email: joi.string().required().email(),
-    password: joi.string().required(),
-    name: joi.string().required().alphanum(),
-    repeat_password: joi.ref("password"),
-  });
-  const { error } = signUpSchema.validate(req.body, {
-    abortEarly: false,
-  });
-  if (error) {
-    return res.status(422).send(error.details.map((detail) => detail.message));
-  }
-  try {
-    const find = await db.collection("users").findOne({ email });
-    console.log(find);
-    if (find) {
-      return res.status(409).send("Já existe um usuário com esse e-mail.");
-    }
-    const passwordHash = bcrypt.hashSync(password, 10);
-    await db
-      .collection("users")
-      .insertOne({ email, name, password: passwordHash });
-    res.status(201).send();
-  } catch (error) {
-    console.log("Erro ao cadastrar", error);
-    res.sendStatus(500);
-  }
-});
-app.post("/moviment", async (req, res) => {
-    const { authorization } = req.headers;
-    const { value, isEntrada, description } = req.body;
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.status(401).send("Token não enviado.");
-    try {
-      const session = await db.collection("sessions").findOne({ token });
-      if (!session) {
-        return res.status(401).send("Sessao não encontrada.");
-      }
-      const user = await db.collection("users").findOne({
-        _id: session.userId,
-      });
-      if (user) {
-        const movimentSchema = joi.object({
-          value: joi.number().required(),
-          isEntrada: joi.boolean().required(),
-          description: joi.string().required(),
-        });
-        const { error } = movimentSchema.validate(req.body, {
-          abortEarly: false,
-        });
-        if (error) {
-          return res
-            .status(422)
-            .send(error.details.map((detail) => detail.message));
-        }
-  
-        await db
-          .collection("moviments")
-          .insertOne({ userId: user._id, value, isEntrada, description });
-        return res.status(201).send("Movimentacao criada");
-      } else {
-        res.status(401).send("Usuario não encontrado.");
-      }
-    } catch (error) {
-      console.log("Erro ao movimentar", error);
-      res.sendStatus(500);
-    }
-  });
-  
-  app.get("/moviment", async (req, res) => {
-    const { authorization } = req.headers;
-    const { value, isEntrada, description } = req.body;
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.status(401).send("Token não enviado.");
-    try {
-      const session = await db.collection("sessions").findOne({ token });
-      if (!session) {
-        return res.status(401).send("Sessao não encontrada.");
-      }
-      const user = await db.collection("users").findOne({
-        _id: session.userId,
-      });
-      if (user) {
-        const { _id } = user;
-        const listMoviments = await db
-          .collection("moviments")
-          .find({ userId: _id })
-          .toArray();
-        return res.status(201).send(listMoviments);
-      } else {
-        res.status(401).send("Usuario não encontrado.");
-      }
-    } catch (error) {
-      console.log("Erro ao movimentar", error);
-      res.sendStatus(500);
-    }
-  });
-  app.listen(process.env.PORTA);
+app.post("/login", login);
+app.post("/sign-up", signUp);
+app.post("/moviment", postMoviment);
+app.get("/moviment", getMoviment);
+app.listen(process.env.PORTA);
