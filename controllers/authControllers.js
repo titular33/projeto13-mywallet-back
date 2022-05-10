@@ -22,7 +22,7 @@ export async function login(req, res) {
       console.log("entrou");
       const token = uuid();
       await db.collection("sessions").insertOne({ userId: user._id, token });
-      res.status(200).send(token);
+      res.status(200).send({ token, name: user.name });
     } else {
       res.status(401).send("Email/Senha incorretas!");
     }

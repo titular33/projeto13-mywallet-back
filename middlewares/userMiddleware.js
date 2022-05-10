@@ -13,7 +13,8 @@ export async function validaHeader(req, res, next) {
       _id: session.userId,
     });
     if (user) {
-      req.userMiddleware = user;
+        delete user.password;
+        res.locals.user = user;
       next();
     } else {
       return res.status(401).send("Usuario não encontrado.");

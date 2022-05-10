@@ -10,4 +10,4 @@ app.use(json());
 app.use(cors());
 app.use(authRouter);
 app.use(movimentRouter);
-app.listen(process.env.PORTA);
+app.listen(process.env.PORT);

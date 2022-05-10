@@ -1,9 +1,10 @@
 import db from "./../db.js";
 import joi from "joi";
+import dayjs from "dayjs";
 
 export async function postMoviment(req, res) {
   const { value, isEntrada, description } = req.body;
-  const user = req.userMiddleware;
+  const user = res.locals.user;
   const movimentSchema = joi.object({
     value: joi.number().required(),
     isEntrada: joi.boolean().required(),
@@ -16,9 +17,13 @@ export async function postMoviment(req, res) {
     return res.status(422).send(error.details.map((detail) => detail.message));
   }
   try {
-    await db
-      .collection("moviments")
-      .insertOne({ userId: user._id, value, isEntrada, description });
+    await db.collection("moviments").insertOne({
+      userId: user._id,
+      value,
+      isEntrada,
+      description,
+      date: dayjs().format("DD/MM"),
+    });
     return res.status(201).send("Movimentacao criada");
   } catch (error) {
     console.log("Erro ao movimentar", error);
@@ -27,9 +32,8 @@ export async function postMoviment(req, res) {
 }
 
 export async function getMoviment(req, res) {
-  const { value, isEntrada, description } = req.body;
   try {
-    const { _id } = req.userMiddleware;
+    const { _id } = res.locals.user;
     const listMoviments = await db
       .collection("moviments")
       .find({ userId: _id })
@@ -38,5 +42,5 @@ export async function getMoviment(req, res) {
   } catch (error) {
     console.log("Erro ao movimentar", error);
     res.sendStatus(500);
-  } 
+  }
 }
