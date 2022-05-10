@@ -1,15 +1,13 @@
 import express, { json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { login, signUp } from "./controllers/authControllers.js";
-import { getMoviment, postMoviment } from "./controllers/movimentControllers.js";
+import authRouter from "./routes/authRoutes.js";
+import movimentRouter from "./routes/movimentRoutes.js";
 
 dotenv.config();
 let app = express();
 app.use(json());
 app.use(cors());
-app.post("/login", login);
-app.post("/sign-up", signUp);
-app.post("/moviment", postMoviment);
-app.get("/moviment", getMoviment);
+app.use(authRouter);
+app.use(movimentRouter);
 app.listen(process.env.PORTA);
